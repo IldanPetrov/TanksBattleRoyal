@@ -2,6 +2,7 @@ import pygame
 import os
 import math
 from core.utils import rotate_point, get_local_position, get_global_position
+from settings import DIR_POV
 
 
 class GameCoreException(Exception):
@@ -131,16 +132,36 @@ class GameObject:
         if not self.visible or not self.sprite:
             return
 
-        cam_dir = camera.get_dir()
-        if camera.pinned and getattr(__import__("settings"), "DIR_POV", False):
+        screen_w, screen_h = surface.get_size()
+
+        # глобальные координаты и угол объекта
+        obj_x, obj_y = self.get_position(global_=True)
+        obj_dir = self.get_dir(global_=True)
+
+        # глобальные координаты и угол камеры
+        cam_x, cam_y = camera.get_position(global_=True)
+        cam_dir = camera.get_dir(global_=True)
+
+        if camera.pinned and not getattr(__import__('settings'), 'DIR_POV', False):
             cam_dir = 0
 
-        wx, wy = get_local_position(camera.get_position(), cam_dir, self.get_position())
-        wdir = self.get_dir() - cam_dir
+        # перенос в систему камеры
+        dx, dy = obj_x - cam_x, obj_y - cam_y
+        dx, dy = rotate_point((dx, dy), -cam_dir, base=(0, 0))
 
-        surf = pygame.transform.rotozoom(self.sprite, wdir, camera.zoom)
-        rect = surf.get_rect()
-        rect.center = (wx, wy)
+        # применяем зум
+        dx, dy = dx * camera.zoom, dy * camera.zoom
+
+        # экранные координаты
+        screen_x = dx + screen_w // 2
+        screen_y = dy + screen_h // 2
+
+        # угол объекта в экранной системе
+        wdir = obj_dir - cam_dir
+
+        # рендер спрайта
+        surf = pygame.transform.rotozoom(self.sprite, -wdir, camera.zoom)
+        rect = surf.get_rect(center=(screen_x, screen_y))
         surface.blit(surf, rect)
 
 
