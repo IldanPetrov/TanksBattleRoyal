@@ -1,7 +1,7 @@
 import pygame
 import os
 import math
-from core.utils import rotate_point
+from core.utils import rotate_point, get_local_position, get_global_position
 
 
 class GameCoreException(Exception):
@@ -69,7 +69,7 @@ class GameObject:
         if self.pinned and global_:
             parent_pos = self.parent.get_position(global_=True)
             parent_dir = self.parent.get_dir(global_=True)
-            local_x, local_y = rotate_point((x, y), -parent_dir, base=parent_pos)
+            local_x, local_y = get_local_position(parent_pos, parent_dir, (x, y))
             self.set_position(local_x, local_y, global_=False)
         elif not self.pinned and not global_:
             raise GameCoreException("Unpinned objects have only global position")
@@ -78,11 +78,9 @@ class GameObject:
 
     def get_position(self, global_=True):
         if self.pinned and global_:
-            parent_x, parent_y = self.parent.get_position(global_=True)
+            parent_pos = self.parent.get_position(global_=True)
             parent_dir = self.parent.get_dir(global_=True)
-            # локальные координаты -> поворачиваем в систему родителя
-            gx, gy = rotate_point((self._x, self._y), parent_dir, base=(0, 0))
-            return parent_x + gx, parent_y + gy
+            return get_global_position(parent_pos, parent_dir, self.get_position(global_=False))
         elif not self.pinned and not global_:
             raise GameCoreException("Unpinned objects have only global position")
         else:
@@ -133,18 +131,17 @@ class GameObject:
         if not self.visible or not self.sprite:
             return
 
-        wx, wy = self.get_position(global_=True)
-        obj_dir = self.get_dir(global_=True)
+        cam_dir = camera.get_dir()
+        if camera.pinned and getattr(__import__("settings"), "DIR_POV", False):
+            cam_dir = 0
 
-        if getattr(__import__("settings"), "DIR_POV", False):
-            obj_dir -= camera.get_dir(global_=True)
+        wx, wy = get_local_position(camera.get_position(), cam_dir, self.get_position())
+        wdir = self.get_dir() - cam_dir
 
-        rotated = pygame.transform.rotate(self.sprite, -obj_dir)
-        rect = rotated.get_rect(center=camera.world_to_screen(wx, wy, surface))
-        surface.blit(rotated, rect)
-
-        for child in self.children:
-            child.render(surface, camera)
+        surf = pygame.transform.rotozoom(self.sprite, wdir, camera.zoom)
+        rect = surf.get_rect()
+        rect.center = (wx, wy)
+        surface.blit(surf, rect)
 
 
 

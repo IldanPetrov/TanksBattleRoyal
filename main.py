@@ -15,17 +15,21 @@ def main():
     physics = PhysicsService()
 
     # корпус
-    hull = GameObject(sprite="StandardHull.png", width=80, length=80, render_height=0)
+    hull = GameObject(sprite="StandardHull.png", width=70, length=50, render_height=0)
     hull.set_position(400, 300, global_=True)
 
     # башня
-    gun = GameObject(sprite="StandardGun.png", width=60, length=20, render_height=1, parent=hull)
+    gun = GameObject(sprite="StandardGun.png", width=80, length=33, render_height=1, parent=hull)
     gun.set_position(0, 0, global_=False)
+    gun.set_dir(0, global_=False)
 
     # камера (POV на танк)
-    camera = Camera(zoom=1.0, parent=hull)
-    camera.set_position(0, -150, global_=False)  # сзади танка
-    camera.set_dir(0, global_=False)
+    pov_camera = Camera(zoom=1.0, parent=hull)
+    pov_camera.set_position(0, 0, global_=False)  # сзади танка
+    pov_camera.set_dir(90, global_=False)
+
+    global_camera = Camera(zoom=0.5)
+    global_camera.set_position(0, 0)
 
     pov_mode = True
 
@@ -39,13 +43,6 @@ def main():
                 if event.key == pygame.K_c:
                     # переключение режима камеры
                     pov_mode = not pov_mode
-                    if pov_mode:
-                        camera.pin_to(hull)
-                        camera.set_position(0, -150, global_=False)
-                        camera.set_dir(0, global_=False)
-                    else:
-                        camera.unpin()
-                        camera.set_position(400, 300, global_=True)
 
         # тестовое вращение
         hull.rot_speed = 40
@@ -54,7 +51,10 @@ def main():
         physics.update_all(dt)
 
         screen.fill((100, 100, 100))
-        physics.render_all(screen, camera)
+        if pov_mode:
+            physics.render_all(screen, pov_camera)
+        else:
+            physics.render_all(screen, global_camera)
         pygame.display.flip()
 
     pygame.quit()
