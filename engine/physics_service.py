@@ -1,5 +1,8 @@
 import pygame
-from core.game_object import GameObject
+from engine.game_object import GameObject
+from engine.material_object import MaterialObject
+from engine.dynamic_object import DynamicObject
+from engine.visual_object import VisualObject
 
 
 class PhysicsService:
@@ -8,14 +11,16 @@ class PhysicsService:
 
     def update_all(self, dt):
         for obj in GameObject.registry:
-            obj.update(dt)
+            if isinstance(obj, DynamicObject):
+                obj.update(dt)
 
     def render_all(self, surface, camera):
-        for obj in sorted(GameObject.registry, key=lambda o: o.render_height):
+        for obj in sorted([obj for obj in GameObject.registry if isinstance(obj, VisualObject)],
+                          key=lambda o: o.render_height):
             obj.render(surface, camera)
 
     def check_collisions(self):
-        for i, a in enumerate(GameObject.registry):
+        for i, a in enumerate([obj for obj in GameObject.registry if isinstance(obj, MaterialObject)]):
             if not a.collision:
                 continue
             rect_a = pygame.Rect(*a.get_position(), a.width, a.length)

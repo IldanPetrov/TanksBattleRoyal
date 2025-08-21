@@ -1,11 +1,11 @@
 import pygame
 import math
 import os
-from entities.utils import scale_value
+from game.utils import scale_value
 
 
 def load_sprite(name, size):
-    path = os.path.join("src", f"{name}.png")
+    path = os.path.join("sprites", f"{name}.png")
     image = pygame.image.load(path).convert_alpha()
     return pygame.transform.scale(image, size)
 
