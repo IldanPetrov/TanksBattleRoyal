@@ -1,52 +1,59 @@
-import pygame
+# game/bullet.py
 import math
-import os
-from game.utils import scale_value
+
+import pygame
+
+from engine.destructible_object import DestructibleObject
+from engine.dynamic_object import DynamicObject
+from engine.game_object import GameObject
+from engine.visual_object import VisualObject
+from engine.material_object import MaterialObject
 
 
-def load_sprite(name, size):
-    path = os.path.join("sprites", f"{name}.png")
-    image = pygame.image.load(path).convert_alpha()
-    return pygame.transform.scale(image, size)
+class Bullet(DynamicObject, VisualObject, MaterialObject):
+    def __init__(self, sprite="StandardBullet.png", speed=400, dmg=10, range_=500, owner=None,
+                 length=10, width=10, **kwargs):
 
+        # Инициализируем каждую часть отдельно
+        DynamicObject.__init__(self, "Bullet", **kwargs)
+        VisualObject.__init__(self, "Bullet", sprite=sprite, render_height=2,
+                              length=length, width=width, **kwargs)
+        MaterialObject.__init__(self, "Bullet", length=length, width=width, collision=True, **kwargs)
 
-class Bullet:
-    def __init__(self, x, y, angle, dmg, speed, range_, lvl=0):
-        self.base_dmg = dmg
-        self.base_speed = speed
-        self.base_range = range_
-        self.lvl = lvl
-
-        self.dmg = scale_value(dmg, lvl)
-        self.speed = scale_value(speed, lvl)
-        self.range = scale_value(range_, lvl)
-
-        self.x = x
-        self.y = y
-        self.angle = angle
+        self.speed = speed
+        self.dmg = dmg
+        self.range = range_
+        self.owner = owner
         self.distance_traveled = 0
-        self.alive = True
-        self.sprite = None  # загружаем в наследнике
 
-    def update(self):
-        if not self.alive:
-            return
-        rad = math.radians(self.angle)
-        self.x += math.cos(rad) * self.speed
-        self.y += math.sin(rad) * self.speed
-        self.distance_traveled += self.speed
+    def update(self, dt):
+        # движение
+        DynamicObject.update(self, dt)
+        self.distance_traveled += self.speed * dt
+
+        # исчезновение после достижения дальности
         if self.distance_traveled > self.range:
-            self.alive = False
+            self.destroy()
 
-    def draw(self, screen, camera):
-        if not self.alive:
+    def collided_to(self, other):
+        if other == self.owner:
             return
-        rotated = pygame.transform.rotate(self.sprite, -self.angle)
-        rect = rotated.get_rect(center=camera.world_to_screen(self.x, self.y))
-        screen.blit(rotated, rect)
+        if isinstance(other, DestructibleObject):
+            other.get_dmg(self.dmg, pygame.time.get_ticks())
+        self.destroy()
 
+    def destroy(self):
+        if self in GameObject.registry:
+            GameObject.registry.remove(self)
+        if self in VisualObject.registry:
+            VisualObject.registry.remove(self)
+        if self in MaterialObject.registry:
+            MaterialObject.registry.remove(self)
+
+        del self
 
 class StandardBullet(Bullet):
-    def __init__(self, x, y, angle, lvl=0):
-        super().__init__(x, y, angle, dmg=10, speed=10, range_=500, lvl=lvl)
-        self.sprite = load_sprite(self.__class__.__name__, (10, 5))
+    def __init__(self, owner=None, lvl=0):
+        super().__init__(sprite="StandardBullet.png", speed=400, dmg=10, range_=500,
+                         owner=owner, length=10, width=10)
+        self.lvl = lvl

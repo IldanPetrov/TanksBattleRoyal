@@ -1,3 +1,5 @@
+# game_object.py
+
 import math
 from idlelib.window import registry
 
